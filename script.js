@@ -4,127 +4,128 @@ const gameState = {
     totalEarned: 0,
     totalClicks: 0,
     multiplier: 1,
-    upgrades: {
-        horseshoes: { owned: 0, cost: 10, multiplier: 1.5, emoji: '🔨', name: 'Horseshoes' },
-        saddle: { owned: 0, cost: 50, multiplier: 2, emoji: '🎀', name: 'Saddle' },
-        carrot: { owned: 0, cost: 100, multiplier: 3, emoji: '🥕', name: 'Carrot' },
-        lightning: { owned: 0, cost: 250, multiplier: 5, emoji: '⚡', name: 'Lightning Strike' },
-        trophy: { owned: 0, cost: 500, multiplier: 10, emoji: '🏆', name: 'Trophy' },
-        crown: { owned: 0, cost: 1000, multiplier: 15, emoji: '👑', name: 'Crown' }
-    }
+    upgrades: [
+        { id: 'horseshoes', name: 'Horseshoes', emoji: '🔨', cost: 10, multiplier: 0.5, owned: 0 },
+        { id: 'saddle', name: 'Saddle', emoji: '🎀', cost: 50, multiplier: 1, owned: 0 },
+        { id: 'carrot', name: 'Carrot', emoji: '🥕', cost: 100, multiplier: 2, owned: 0 },
+        { id: 'lightning', name: 'Lightning', emoji: '⚡', cost: 250, multiplier: 4, owned: 0 },
+        { id: 'trophy', name: 'Trophy', emoji: '🏆', cost: 500, multiplier: 9, owned: 0 },
+        { id: 'crown', name: 'Crown', emoji: '👑', cost: 1000, multiplier: 14, owned: 0 }
+    ]
 };
 
-// Save game state to localStorage
-function saveGame() {
-    localStorage.setItem('horseClickerSave', JSON.stringify(gameState));
-}
+// DOM Elements
+const horseButton = document.getElementById('horseButton');
+const pointsDisplay = document.getElementById('points');
+const perClickDisplay = document.getElementById('perClick');
+const totalEarnedDisplay = document.getElementById('totalEarned');
+const totalClicksDisplay = document.getElementById('totalClicks');
+const upgradesGrid = document.getElementById('upgradesGrid');
 
 // Load game state from localStorage
 function loadGame() {
-    const saved = localStorage.getItem('horseClickerSave');
+    const saved = localStorage.getItem('horseClickerGame');
     if (saved) {
-        const loaded = JSON.parse(saved);
-        Object.assign(gameState, loaded);
-        recalculateMultiplier();
+        const loadedState = JSON.parse(saved);
+        gameState.points = loadedState.points || 0;
+        gameState.totalEarned = loadedState.totalEarned || 0;
+        gameState.totalClicks = loadedState.totalClicks || 0;
+        gameState.upgrades = loadedState.upgrades || gameState.upgrades;
+        updateMultiplier();
     }
 }
 
-// Recalculate the total multiplier based on owned upgrades
-function recalculateMultiplier() {
+// Save game state to localStorage
+function saveGame() {
+    localStorage.setItem('horseClickerGame', JSON.stringify(gameState));
+}
+
+// Update the multiplier based on owned upgrades
+function updateMultiplier() {
     gameState.multiplier = 1;
-    for (let upgrade in gameState.upgrades) {
-        gameState.multiplier += (gameState.upgrades[upgrade].owned * gameState.upgrades[upgrade].multiplier);
-    }
+    gameState.upgrades.forEach(upgrade => {
+        gameState.multiplier += upgrade.owned * upgrade.multiplier;
+    });
 }
 
-// Update the display
-function updateDisplay() {
-    document.getElementById('points').textContent = Math.floor(gameState.points).toLocaleString();
-    document.getElementById('perClick').textContent = gameState.multiplier.toFixed(1);
-    document.getElementById('totalEarned').textContent = Math.floor(gameState.totalEarned).toLocaleString();
-    document.getElementById('totalClicks').textContent = gameState.totalClicks.toLocaleString();
+// Update all UI displays
+function updateUI() {
+    pointsDisplay.textContent = Math.floor(gameState.points);
+    perClickDisplay.textContent = gameState.multiplier.toFixed(1);
+    totalEarnedDisplay.textContent = Math.floor(gameState.totalEarned);
+    totalClicksDisplay.textContent = gameState.totalClicks;
 }
 
 // Handle horse click
 function clickHorse() {
-    const pointsEarned = gameState.multiplier;
-    gameState.points += pointsEarned;
-    gameState.totalEarned += pointsEarned;
+    const pointsGained = gameState.multiplier;
+    gameState.points += pointsGained;
+    gameState.totalEarned += pointsGained;
     gameState.totalClicks++;
-    updateDisplay();
-    updateUpgradeButtons();
     
-    // Add visual feedback
-    animateClick();
-}
-
-// Animate the click
-function animateClick() {
-    const button = document.getElementById('horseButton');
-    button.style.transform = 'scale(0.95)';
+    updateUI();
+    
+    // Add animation
+    horseButton.style.transform = 'scale(0.9)';
     setTimeout(() => {
-        button.style.transform = '';
+        horseButton.style.transform = 'scale(1)';
     }, 100);
 }
 
-// Purchase an upgrade
-function buyUpgrade(upgradeKey) {
-    const upgrade = gameState.upgrades[upgradeKey];
-    if (gameState.points >= upgrade.cost) {
-        gameState.points -= upgrade.cost;
-        upgrade.owned++;
-        recalculateMultiplier();
-        updateDisplay();
-        updateUpgradeButtons();
-        saveGame();
-    }
-}
-
-// Update upgrade button states
-function updateUpgradeButtons() {
-    for (let upgradeKey in gameState.upgrades) {
-        const button = document.getElementById(`upgrade-${upgradeKey}`);
-        const upgrade = gameState.upgrades[upgradeKey];
-        const canAfford = gameState.points >= upgrade.cost;
-        
-        button.disabled = !canAfford;
+// Create upgrade buttons
+function createUpgradeButtons() {
+    upgradesGrid.innerHTML = '';
+    gameState.upgrades.forEach((upgrade, index) => {
+        const button = document.createElement('button');
+        button.className = 'upgrade-button';
+        button.id = `upgrade-${upgrade.id}`;
         button.innerHTML = `
             <span class="upgrade-emoji">${upgrade.emoji}</span>
             <span class="upgrade-name">${upgrade.name}</span>
             <span class="upgrade-cost">Cost: ${upgrade.cost}</span>
-            <span class="upgrade-multiplier">+${upgrade.multiplier.toFixed(1)}x</span>
+            <span class="upgrade-multiplier">+${upgrade.multiplier}x</span>
             <span class="upgrade-owned">Owned: ${upgrade.owned}</span>
         `;
-    }
-}
-
-// Initialize the upgrade buttons
-function initializeUpgrades() {
-    const grid = document.getElementById('upgradesGrid');
-    
-    for (let upgradeKey in gameState.upgrades) {
-        const button = document.createElement('button');
-        button.className = 'upgrade-button';
-        button.id = `upgrade-${upgradeKey}`;
-        button.onclick = () => buyUpgrade(upgradeKey);
         
-        grid.appendChild(button);
+        button.onclick = () => buyUpgrade(index);
+        upgradesGrid.appendChild(button);
+    });
+}
+
+// Buy an upgrade
+function buyUpgrade(index) {
+    const upgrade = gameState.upgrades[index];
+    
+    if (gameState.points >= upgrade.cost) {
+        gameState.points -= upgrade.cost;
+        upgrade.owned++;
+        upgrade.cost = Math.ceil(upgrade.cost * 1.15); // Increase cost by 15%
+        
+        updateMultiplier();
+        updateUI();
+        createUpgradeButtons();
+        saveGame();
+    } else {
+        // Flash button to indicate insufficient points
+        const button = document.getElementById(`upgrade-${upgrade.id}`);
+        button.style.opacity = '0.5';
+        setTimeout(() => {
+            button.style.opacity = '1';
+        }, 200);
     }
-    
-    updateUpgradeButtons();
 }
 
-// Initialize the game
-function initializeGame() {
+// Auto-save every 5 seconds
+setInterval(() => {
+    saveGame();
+}, 5000);
+
+// Event listeners
+horseButton.addEventListener('click', clickHorse);
+
+// Initialize game
+window.addEventListener('DOMContentLoaded', () => {
     loadGame();
-    initializeUpgrades();
-    updateDisplay();
-    
-    document.getElementById('horseButton').addEventListener('click', clickHorse);
-    
-    // Auto-save every 5 seconds
-    setInterval(saveGame, 5000);
-}
-
-// Start the game when DOM is ready
-document.addEventListener('DOMContentLoaded', initializeGame);
+    createUpgradeButtons();
+    updateUI();
+});
